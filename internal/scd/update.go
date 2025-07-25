@@ -17,19 +17,35 @@ func Update[T SCDModel](db *gorm.DB, businessID string, mutator func(T)) (T, err
 	var result T
 
 	err := db.Transaction(func(tx *gorm.DB) error {
-		// 1. Get the current latest version
+		// 1. Create single timestamp to eliminate overlapping validity windows
+		ts := time.Now()
+
+		// 2. Get the current latest version
 		var latest T
 		if err := tx.Scopes(Latest).Where("id = ?", businessID).First(&latest).Error; err != nil {
 			return fmt.Errorf("failed to find latest version of %s: %w", businessID, err)
 		}
 
-		// 2. Get table name for atomic version allocation
+		// 3. Make a deep copy of the latest version so we don't mutate the original struct
+		prevLatest := latest // Keep reference to close later
+
+		// Use reflection to create a new instance of the underlying struct and copy the field values
+		origVal := reflect.ValueOf(latest)
+		if origVal.Kind() != reflect.Ptr || origVal.IsNil() {
+			return fmt.Errorf("latest version is not a valid pointer")
+		}
+		copyVal := reflect.New(origVal.Elem().Type())
+		copyVal.Elem().Set(origVal.Elem())
+
+		result = copyVal.Interface().(T)
+
+		// 4. Get table name for atomic version allocation
 		tableName, err := getTableName(tx, result)
 		if err != nil {
 			return fmt.Errorf("failed to determine table name: %w", err)
 		}
 
-		// 3. Atomically allocate next version number using CTE
+		// 5. Atomically allocate next version number using CTE
 		// This prevents race conditions where concurrent updates try the same version
 		var nextVersion int
 		if err := tx.Raw(`
@@ -41,15 +57,15 @@ func Update[T SCDModel](db *gorm.DB, businessID string, mutator func(T)) (T, err
 			return fmt.Errorf("failed to get next version: %w", err)
 		}
 
-		// 4. Create a copy for the new version with mutations applied
-		result = latest
+		// 6. Create a copy for the new version with mutations applied
 		mutator(result)
 
-		// 5. Prepare new version with atomic version number
+		// 7. Prepare new version with atomic version number and explicit ValidFrom
 		result.SetUID(uuid.New())
 		result.SetVersion(nextVersion)
+		result.SetValidFrom(ts) // Use the same timestamp to prevent overlaps
 
-		// 6. Insert new version first (with retry logic for race condition protection)
+		// 8. Insert new version first (with retry logic for race condition protection)
 		maxRetries := 3
 		for attempt := 0; attempt < maxRetries; attempt++ {
 			if err := tx.Create(result).Error; err != nil {
@@ -72,9 +88,8 @@ func Update[T SCDModel](db *gorm.DB, businessID string, mutator func(T)) (T, err
 			break // Success
 		}
 
-		// 7. Close the previous version AFTER successfully creating new one
-		now := time.Now()
-		if err := tx.Model(&latest).Update("valid_to", now).Error; err != nil {
+		// 9. Close the previous version with the SAME timestamp to prevent overlaps
+		if err := tx.Model(prevLatest).Update("valid_to", ts).Error; err != nil {
 			return fmt.Errorf("failed to close previous version: %w", err)
 		}
 
@@ -113,6 +128,7 @@ func CreateNew[T SCDModel](db *gorm.DB, entity T) (T, error) {
 	// Set SCD fields for new entity
 	entity.SetUID(uuid.New())
 	entity.SetVersion(1)
+	entity.SetValidFrom(time.Now())
 
 	// Create the entity
 	if err := db.Create(entity).Error; err != nil {

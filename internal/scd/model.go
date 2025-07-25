@@ -16,6 +16,7 @@ type SCDModel interface {
 	SetUID(uuid.UUID)
 	SetBusinessID(string)
 	SetVersion(int)
+	SetValidFrom(time.Time)
 }
 
 // Model provides SCD functionality when embedded in domain models
@@ -23,7 +24,7 @@ type Model struct {
 	UID       uuid.UUID  `gorm:"primaryKey;type:uuid;default:gen_random_uuid()" json:"uid"`
 	ID        string     `gorm:"index:idx_id_ver,unique;not null" json:"id"`
 	Version   int        `gorm:"index:idx_id_ver,unique;not null" json:"version"`
-	ValidFrom time.Time  `gorm:"autoCreateTime:nano;not null" json:"valid_from"`
+	ValidFrom time.Time  `gorm:"not null" json:"valid_from"`
 	ValidTo   *time.Time `gorm:"index:idx_latest,where:valid_to IS NULL" json:"valid_to,omitempty"`
 }
 
@@ -55,6 +56,11 @@ func (m *Model) SetBusinessID(id string) {
 // SetVersion sets the version number
 func (m *Model) SetVersion(version int) {
 	m.Version = version
+}
+
+// SetValidFrom sets the validity start time
+func (m *Model) SetValidFrom(t time.Time) {
+	m.ValidFrom = t
 }
 
 // BeforeCreate sets Version=1 for new business IDs, increments for existing IDs
