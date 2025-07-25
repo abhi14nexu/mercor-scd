@@ -82,28 +82,6 @@ func (m *Model) BeforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-// BeforeUpdate prevents modification of protected SCD fields
-func (m *Model) BeforeUpdate(tx *gorm.DB) error {
-	// Get the current state from database
-	var current Model
-	if err := tx.Model(m).Select("uid, version, valid_from").Where("uid = ?", m.UID).First(&current).Error; err != nil {
-		return err
-	}
-
-	// Check if protected fields are being modified
-	if m.UID != current.UID {
-		return errors.New("UID cannot be modified - use scd.Update() to create new version")
-	}
-	if m.Version != current.Version {
-		return errors.New("Version cannot be modified - use scd.Update() to create new version")
-	}
-	if !m.ValidFrom.Equal(current.ValidFrom) {
-		return errors.New("ValidFrom cannot be modified - use scd.Update() to create new version")
-	}
-
-	return nil
-}
-
 // IsLatest returns true if this is the latest version (ValidTo is nil)
 func (m *Model) IsLatest() bool {
 	return m.ValidTo == nil
