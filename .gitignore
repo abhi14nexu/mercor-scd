@@ -145,4 +145,7 @@ coverage/
 
 # Temporary folders
 tmp/
-temp/ 
+temp/
+
+# Assignment documentation (contains sensitive project details)
+assignment.md 

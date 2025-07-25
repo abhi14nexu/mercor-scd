@@ -1,0 +1,4 @@
+DROP TABLE IF EXISTS payment_line_items;
+DROP TABLE IF EXISTS timelogs;
+DROP TABLE IF EXISTS jobs;
+DROP EXTENSION IF EXISTS "pgcrypto";
