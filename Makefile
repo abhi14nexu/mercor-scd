@@ -1,7 +1,13 @@
-.PHONY: dev-up migrate seed test bench reset demo-build demo-help
+.PHONY: dev-up migrate seed test bench reset demo-build demo-help api
 
 dev-up:
 	docker compose up -d db
+	@echo "⏳ Waiting for PostgreSQL to be ready..."
+	sleep 3
+	make migrate
+	make seed
+	@echo "🚀 Starting API server..."
+	export DATABASE_URL="postgres://postgres:postgres@localhost:5432/mercor?sslmode=disable" && go run ./cmd/api
 
 # Reset database to clean state
 reset:
@@ -23,7 +29,7 @@ demo-build:
 	@echo "✅ Demo CLI built successfully!"
 
 # Seed database with full data (including version updates)
-seed: reset
+seed:
 	@echo "🌱 Seeding database with full sample data..."
 	export DATABASE_URL="postgres://postgres:postgres@localhost:5432/mercor?sslmode=disable" && go run ./cmd/demo seed
 
@@ -65,4 +71,9 @@ test:
 	go test ./...
 
 bench:
-	go test -bench=. ./... 
+	go test -bench=. ./...
+
+# Start just the API server (assumes database is already running)
+api:
+	@echo "🚀 Starting API server on :8081..."
+	export DATABASE_URL="postgres://postgres:postgres@localhost:5432/mercor?sslmode=disable" && go run ./cmd/api 

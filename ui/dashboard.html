@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SCD Data Dashboard</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0; padding: 20px; background: #f8f9fa; color: #333;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        
+        /* Header */
+        .header { 
+            background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center;
+        }
+        .header h1 { margin: 0; color: #2c3e50; }
+        .health-badge { 
+            padding: 8px 16px; border-radius: 20px; color: white; font-weight: 500;
+            background: #28a745; transition: background 0.3s;
+        }
+        .health-badge.error { background: #dc3545; }
+        
+        /* Navigation */
+        .nav-tabs { 
+            display: flex; gap: 5px; margin-bottom: 20px; background: white;
+            padding: 5px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .nav-tab { 
+            padding: 12px 24px; background: transparent; border: none; cursor: pointer;
+            border-radius: 6px; font-weight: 500; transition: all 0.2s;
+        }
+        .nav-tab.active { background: #007bff; color: white; }
+        .nav-tab:hover:not(.active) { background: #e9ecef; }
+        
+        /* Content sections */
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        
+        .section { 
+            background: white; margin-bottom: 20px; padding: 20px; border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .section h2 { margin: 0 0 20px 0; color: #2c3e50; }
+        
+        /* Controls */
+        .controls { 
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px; margin-bottom: 20px; padding: 20px; background: #f8f9fa;
+            border-radius: 6px; border: 1px solid #e9ecef;
+        }
+        .control-group { display: flex; flex-direction: column; }
+        .control-group label { font-weight: 500; margin-bottom: 5px; color: #495057; }
+        .controls input, .controls select { 
+            padding: 10px 12px; border: 1px solid #ced4da; border-radius: 4px;
+            font-size: 14px; transition: border-color 0.2s;
+        }
+        .controls input:focus, .controls select:focus { 
+            outline: none; border-color: #007bff; box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
+        }
+        
+        .action-buttons { 
+            display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap;
+        }
+        .btn { 
+            padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer;
+            font-weight: 500; transition: all 0.2s; text-decoration: none; display: inline-block;
+        }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-primary:hover { background: #0056b3; transform: translateY(-1px); }
+        .btn-secondary { background: #6c757d; color: white; }
+        .btn-secondary:hover { background: #545b62; }
+        .btn-outline { background: transparent; color: #007bff; border: 1px solid #007bff; }
+        .btn-outline:hover { background: #007bff; color: white; }
+        
+        /* Results */
+        .results { min-height: 100px; }
+        .count-info { 
+            padding: 10px; background: #e3f2fd; border-radius: 4px; margin-bottom: 15px;
+            color: #1565c0; font-weight: 500;
+        }
+        .loading { 
+            text-align: center; padding: 40px; color: #6c757d; font-style: italic;
+        }
+        .error { 
+            padding: 15px; background: #f8d7da; color: #721c24; border-radius: 4px;
+            border: 1px solid #f5c6cb;
+        }
+        
+        /* Tables */
+        .table-container { overflow-x: auto; border-radius: 6px; border: 1px solid #dee2e6; }
+        table { 
+            width: 100%; border-collapse: collapse; background: white; margin: 0;
+        }
+        th { 
+            background: #f8f9fa; padding: 12px; text-align: left; font-weight: 600;
+            color: #495057; border-bottom: 2px solid #dee2e6; position: sticky; top: 0;
+        }
+        td { 
+            padding: 12px; border-bottom: 1px solid #dee2e6; vertical-align: top;
+        }
+        tr:hover { background: #f8f9fa; }
+        
+        /* Status badges */
+        .status-badge { 
+            padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: 500;
+            text-transform: uppercase;
+        }
+        .status-active { background: #d1edff; color: #0c5460; }
+        .status-paused { background: #fff3cd; color: #856404; }
+        .status-completed { background: #d4edda; color: #155724; }
+        .status-paid { background: #d4edda; color: #155724; }
+        .status-not-paid { background: #fff3cd; color: #856404; }
+        .status-failed { background: #f8d7da; color: #721c24; }
+        
+        /* Version indicator */
+        .version-badge { 
+            background: #6f42c1; color: white; padding: 2px 6px; border-radius: 10px;
+            font-size: 11px; font-weight: 500;
+        }
+        .current-version { background: #28a745; }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .controls { grid-template-columns: 1fr; }
+            .header { flex-direction: column; gap: 15px; text-align: center; }
+            .nav-tabs { flex-wrap: wrap; }
+        }
+        
+        /* Database Links */
+        .db-links { 
+            display: flex; gap: 15px; margin-top: 20px; flex-wrap: wrap;
+        }
+        .db-link { 
+            display: flex; align-items: center; gap: 8px; padding: 12px 16px;
+            background: #495057; color: white; text-decoration: none; border-radius: 6px;
+            transition: all 0.2s;
+        }
+        .db-link:hover { background: #343a40; transform: translateY(-1px); }
+        .db-icon { width: 20px; height: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <img 
+  src="https://media.glassdoor.com/sqll/9031572/mercor-squareLogo-1708530905600.png" 
+  style="
+    width: 80px;
+    height: 80px;
+    border-radius: 12px;
+    border: 2px solid #ddd;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    padding: 6px;
+    background: linear-gradient(135deg, #fdfbfb, #ebedee);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  "
+  onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 6px 16px rgba(0,0,0,0.2)';"
+  onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.15)';"
+/>
+
+            <h1> Mercor SCD Data Dashboard</h1>
+            <div id="health-status" class="health-badge">Checking...</div>
+        </div>
+        
+        <!-- Database Access Links -->
+        <div class="section">
+            <h2>🗄️ Direct Database Access</h2>
+            <p>Access your PostgreSQL database directly for advanced queries and full table views:</p>
+            <div class="db-links">
+                <a href="http://localhost:8082" target="_blank" class="db-link">
+                    <svg class="db-icon" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                    </svg>
+                    Adminer Database Admin
+                </a>
+                <span style="color: #6c757d; font-size: 14px; padding: 12px 0;">
+                    Server: <code>db</code> | User: <code>postgres</code> | Password: <code>postgres</code> | Database: <code>mercor</code>
+                </span>
+            </div>
+        </div>
+        
+        <!-- Navigation -->
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="showTab('jobs')">📋 Jobs</button>
+            <button class="nav-tab" onclick="showTab('payments')">💰 Payments</button>
+            <button class="nav-tab" onclick="showTab('timelogs')">⏰ Time Logs</button>
+        </div>
+        
+        <!-- Jobs Tab -->
+        <div id="jobs-tab" class="tab-content active">
+            <div class="section">
+                <h2>Jobs Management</h2>
+                <div class="controls">
+                    <div class="control-group">
+                        <label for="company-filter">Company Filter</label>
+                        <input type="text" id="company-filter" placeholder="e.g., company-acme">
+                    </div>
+                    <div class="control-group">
+                        <label for="contractor-filter">Contractor Filter</label>
+                        <input type="text" id="contractor-filter" placeholder="e.g., contractor-alice">
+                    </div>
+                    <div class="control-group">
+                        <label for="status-filter">Status Filter</label>
+                        <select id="status-filter">
+                            <option value="">All Statuses</option>
+                            <option value="active">Active</option>
+                            <option value="paused">Paused</option>
+                            <option value="completed">Completed</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label for="job-id">Specific Job ID</label>
+                        <input type="text" id="job-id" placeholder="e.g., job-1">
+                    </div>
+                </div>
+                <div class="action-buttons">
+                    <button class="btn btn-primary" onclick="loadJobs()">🔍 Load Latest Jobs</button>
+                    <button class="btn btn-secondary" onclick="loadJobVersions()">📊 View Version History</button>
+                    <button class="btn btn-outline" onclick="clearJobFilters()">🗑️ Clear Filters</button>
+                </div>
+                <div id="jobs-result" class="results"></div>
+            </div>
+        </div>
+        
+        <!-- Payments Tab -->
+        <div id="payments-tab" class="tab-content">
+            <div class="section">
+                <h2>Payment Line Items</h2>
+                <div class="controls">
+                    <div class="control-group">
+                        <label for="payment-contractor-filter">Contractor Filter</label>
+                        <input type="text" id="payment-contractor-filter" placeholder="e.g., contractor-alice">
+                    </div>
+                    <div class="control-group">
+                        <label for="payment-status-filter">Payment Status</label>
+                        <select id="payment-status-filter">
+                            <option value="">All Statuses</option>
+                            <option value="not-paid">Not Paid</option>
+                            <option value="paid">Paid</option>
+                            <option value="failed">Failed</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label for="payment-id">Specific Payment ID</label>
+                        <input type="text" id="payment-id" placeholder="e.g., payment-1">
+                    </div>
+                </div>
+                <div class="action-buttons">
+                    <button class="btn btn-primary" onclick="loadPayments()">🔍 Load Latest Payments</button>
+                    <button class="btn btn-secondary" onclick="loadPaymentVersions()">📊 View Version History</button>
+                    <button class="btn btn-outline" onclick="clearPaymentFilters()">🗑️ Clear Filters</button>
+                </div>
+                <div id="payments-result" class="results"></div>
+            </div>
+        </div>
+        
+        <!-- Timelogs Tab -->
+        <div id="timelogs-tab" class="tab-content">
+            <div class="section">
+                <h2>Time Tracking Logs</h2>
+                <div class="controls">
+                    <div class="control-group">
+                        <label for="timelog-contractor-filter">Contractor Filter</label>
+                        <input type="text" id="timelog-contractor-filter" placeholder="e.g., contractor-alice">
+                    </div>
+                    <div class="control-group">
+                        <label for="timelog-limit">Limit Results</label>
+                        <input type="number" id="timelog-limit" placeholder="50" value="50" min="1" max="1000">
+                    </div>
+                    <div class="control-group">
+                        <label for="timelog-id">Specific Timelog ID</label>
+                        <input type="text" id="timelog-id" placeholder="e.g., timelog-1">
+                    </div>
+                </div>
+                <div class="action-buttons">
+                    <button class="btn btn-primary" onclick="loadTimelogs()">🔍 Load Latest Timelogs</button>
+                    <button class="btn btn-secondary" onclick="loadTimelogVersions()">📊 View Version History</button>
+                    <button class="btn btn-outline" onclick="clearTimelogFilters()">🗑️ Clear Filters</button>
+                </div>
+                <div id="timelogs-result" class="results"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8081/api/v1';
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            checkHealth();
+            loadJobs(); // Load jobs by default
+        });
+
+        // Tab switching
+        function showTab(tabName) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Remove active class from all nav tabs
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected tab
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // Health check
+        async function checkHealth() {
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                const data = await response.json();
+                const healthElement = document.getElementById('health-status');
+                healthElement.textContent = `API ${data.status.toUpperCase()}`;
+                healthElement.className = 'health-badge';
+            } catch (error) {
+                const healthElement = document.getElementById('health-status');
+                healthElement.textContent = 'API OFFLINE';
+                healthElement.className = 'health-badge error';
+            }
+        }
+
+        // Generic data loading function
+        async function loadData(endpoint, params, containerId, formatter) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '<div class="loading">🔄 Loading data...</div>';
+
+            try {
+                const url = `${API_BASE}/${endpoint}?${params.toString()}`;
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (response.ok) {
+                    container.innerHTML = formatter(data);
+                } else {
+                    container.innerHTML = `<div class="error">❌ Error: ${data.error}</div>`;
+                }
+            } catch (error) {
+                container.innerHTML = `<div class="error">❌ Failed to load data: ${error.message}</div>`;
+            }
+        }
+
+        // Jobs functions
+        async function loadJobs() {
+            const company = document.getElementById('company-filter').value;
+            const contractor = document.getElementById('contractor-filter').value;
+            const status = document.getElementById('status-filter').value;
+            
+            const params = new URLSearchParams();
+            if (company) params.append('company', company);
+            if (contractor) params.append('contractor', contractor);
+            if (status) params.append('status', status);
+
+            await loadData('jobs', params, 'jobs-result', formatJobsTable);
+        }
+
+        async function loadJobVersions() {
+            const jobId = document.getElementById('job-id').value || 
+                         prompt("Enter Job ID to see version history (e.g., job-1):");
+            if (jobId) {
+                await loadData(`jobs/${jobId}/versions`, new URLSearchParams(), 'jobs-result', formatJobsTable);
+            }
+        }
+
+        function clearJobFilters() {
+            document.getElementById('company-filter').value = '';
+            document.getElementById('contractor-filter').value = '';
+            document.getElementById('status-filter').value = '';
+            document.getElementById('job-id').value = '';
+            loadJobs();
+        }
+
+        // Payments functions
+        async function loadPayments() {
+            const contractor = document.getElementById('payment-contractor-filter').value;
+            const status = document.getElementById('payment-status-filter').value;
+            
+            const params = new URLSearchParams();
+            if (contractor) params.append('contractor', contractor);
+            if (status) params.append('status', status);
+
+            await loadData('payments', params, 'payments-result', formatPaymentsTable);
+        }
+
+        async function loadPaymentVersions() {
+            const paymentId = document.getElementById('payment-id').value || 
+                             prompt("Enter Payment ID to see version history (e.g., payment-1):");
+            if (paymentId) {
+                await loadData(`payments/${paymentId}/versions`, new URLSearchParams(), 'payments-result', formatPaymentsTable);
+            }
+        }
+
+        function clearPaymentFilters() {
+            document.getElementById('payment-contractor-filter').value = '';
+            document.getElementById('payment-status-filter').value = '';
+            document.getElementById('payment-id').value = '';
+            loadPayments();
+        }
+
+        // Timelogs functions
+        async function loadTimelogs() {
+            const contractor = document.getElementById('timelog-contractor-filter').value;
+            const limit = document.getElementById('timelog-limit').value;
+            
+            const params = new URLSearchParams();
+            if (contractor) params.append('contractor', contractor);
+            if (limit) params.append('limit', limit);
+
+            await loadData('timelogs', params, 'timelogs-result', formatTimelogsTable);
+        }
+
+        async function loadTimelogVersions() {
+            const timelogId = document.getElementById('timelog-id').value || 
+                             prompt("Enter Timelog ID to see version history (e.g., timelog-1):");
+            if (timelogId) {
+                await loadData(`timelogs/${timelogId}/versions`, new URLSearchParams(), 'timelogs-result', formatTimelogsTable);
+            }
+        }
+
+        function clearTimelogFilters() {
+            document.getElementById('timelog-contractor-filter').value = '';
+            document.getElementById('timelog-limit').value = '50';
+            document.getElementById('timelog-id').value = '';
+            loadTimelogs();
+        }
+
+        // Formatting functions
+        function formatJobsTable(data) {
+            if (!data.data || data.data.length === 0) {
+                return '<div class="count-info">📭 No jobs found matching your criteria</div>';
+            }
+
+            let html = `<div class="count-info">📋 Found ${data.count} job${data.count === 1 ? '' : 's'}</div>`;
+            html += '<div class="table-container"><table>';
+            html += `<tr>
+                <th>ID</th><th>Version</th><th>Title</th><th>Company</th><th>Contractor</th>
+                <th>Status</th><th>Rate</th><th>Valid From</th><th>Valid To</th>
+            </tr>`;
+            
+            data.data.forEach(job => {
+                const isLatest = job.valid_to === null;
+                html += `<tr>
+                    <td><strong>${job.id}</strong></td>
+                    <td><span class="version-badge ${isLatest ? 'current-version' : ''}">${job.version}</span></td>
+                    <td>${job.title}</td>
+                    <td>${job.company_id}</td>
+                    <td>${job.contractor_id}</td>
+                    <td><span class="status-badge status-${job.status}">${job.status}</span></td>
+                    <td><strong>$${parseFloat(job.rate).toFixed(2)}</strong></td>
+                    <td>${new Date(job.valid_from).toLocaleString()}</td>
+                    <td>${job.valid_to ? new Date(job.valid_to).toLocaleString() : '<strong>Current</strong>'}</td>
+                </tr>`;
+            });
+            
+            return html + '</table></div>';
+        }
+
+        function formatPaymentsTable(data) {
+            if (!data.data || data.data.length === 0) {
+                return '<div class="count-info">📭 No payments found matching your criteria</div>';
+            }
+
+            let html = `<div class="count-info">💰 Found ${data.count} payment${data.count === 1 ? '' : 's'}</div>`;
+            html += '<div class="table-container"><table>';
+            html += `<tr>
+                <th>ID</th><th>Version</th><th>Amount</th><th>Status</th><th>Job UID</th>
+                <th>Timelog UID</th><th>Valid From</th><th>Valid To</th>
+            </tr>`;
+            
+            data.data.forEach(payment => {
+                const isLatest = payment.valid_to === null;
+                html += `<tr>
+                    <td><strong>${payment.id}</strong></td>
+                    <td><span class="version-badge ${isLatest ? 'current-version' : ''}">${payment.version}</span></td>
+                    <td><strong>$${parseFloat(payment.amount).toFixed(2)}</strong></td>
+                    <td><span class="status-badge status-${payment.status}">${payment.status}</span></td>
+                    <td><code>${payment.job_uid}</code></td>
+                    <td><code>${payment.timelog_uid}</code></td>
+                    <td>${new Date(payment.valid_from).toLocaleString()}</td>
+                    <td>${payment.valid_to ? new Date(payment.valid_to).toLocaleString() : '<strong>Current</strong>'}</td>
+                </tr>`;
+            });
+            
+            return html + '</table></div>';
+        }
+
+        function formatTimelogsTable(data) {
+            if (!data.data || data.data.length === 0) {
+                return '<div class="count-info">📭 No timelogs found matching your criteria</div>';
+            }
+
+            let html = `<div class="count-info">⏰ Found ${data.count} timelog${data.count === 1 ? '' : 's'}</div>`;
+            html += '<div class="table-container"><table>';
+            html += `<tr>
+                <th>ID</th><th>Version</th><th>Duration</th><th>Type</th><th>Start Time</th>
+                <th>End Time</th><th>Job UID</th><th>Valid From</th><th>Valid To</th>
+            </tr>`;
+            
+            data.data.forEach(timelog => {
+                const isLatest = timelog.valid_to === null;
+                const durationHours = (timelog.duration / (1000 * 60 * 60)).toFixed(2);
+                html += `<tr>
+                    <td><strong>${timelog.id}</strong></td>
+                    <td><span class="version-badge ${isLatest ? 'current-version' : ''}">${timelog.version}</span></td>
+                    <td><strong>${durationHours}h</strong></td>
+                    <td><span class="status-badge status-${timelog.type}">${timelog.type}</span></td>
+                    <td>${new Date(timelog.time_start * 1000).toLocaleString()}</td>
+                    <td>${new Date(timelog.time_end * 1000).toLocaleString()}</td>
+                    <td><code>${timelog.job_uid}</code></td>
+                    <td>${new Date(timelog.valid_from).toLocaleString()}</td>
+                    <td>${timelog.valid_to ? new Date(timelog.valid_to).toLocaleString() : '<strong>Current</strong>'}</td>
+                </tr>`;
+            });
+            
+            return html + '</table></div>';
+        }
+    </script>
+</body>
+</html> 

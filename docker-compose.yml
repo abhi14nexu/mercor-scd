@@ -9,5 +9,14 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
 
+  adminer:
+    image: adminer:4.8.1
+    ports:
+      - "8082:8080"
+    depends_on:
+      - db
+    environment:
+      ADMINER_DEFAULT_SERVER: db
+
 volumes:
   pgdata: 
