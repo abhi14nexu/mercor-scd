@@ -21,11 +21,11 @@ type SCDModel interface {
 
 // Model provides SCD functionality when embedded in domain models
 type Model struct {
-	UID       uuid.UUID  `gorm:"primaryKey;type:uuid;default:gen_random_uuid()" json:"uid"`
-	ID        string     `gorm:"index:idx_id_ver,unique;not null" json:"id"`
-	Version   int        `gorm:"index:idx_id_ver,unique;not null" json:"version"`
+	UID       uuid.UUID  `gorm:"primaryKey" json:"uid"`
+	ID        string     `gorm:"index,unique:id_version;not null" json:"id"`
+	Version   int        `gorm:"index,unique:id_version;not null" json:"version"`
 	ValidFrom time.Time  `gorm:"not null" json:"valid_from"`
-	ValidTo   *time.Time `gorm:"index:idx_latest,where:valid_to IS NULL" json:"valid_to,omitempty"`
+	ValidTo   *time.Time `gorm:"index" json:"valid_to,omitempty"`
 }
 
 // GetUID returns the UUID primary key

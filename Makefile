@@ -64,14 +64,33 @@ demo-help:
 	@echo "  make migrate     - Run database migrations"
 	@echo ""
 	@echo "🧪 Testing:"
-	@echo "  make test        - Run all tests"
-	@echo "  make bench       - Run benchmarks"
+	@echo "  make test          - Run all tests (verbose)"
+	@echo "  make test-scd      - Run only SCD library tests"  
+	@echo "  make test-coverage - Run all tests with coverage"
+	@echo "  make bench         - Run benchmarks with memory stats"
 
 test:
-	go test ./...
+	@echo "🧪 Running all tests..."
+	go test -v ./...
 
 bench:
-	go test -bench=. ./...
+	@echo "⚡ Running benchmarks..."
+	go test -bench=. -benchmem ./...
+
+# Test only the SCD library
+test-scd:
+	@echo "🧪 Running SCD tests..."
+	go test -v ./internal/scd/
+
+# Run tests with coverage
+test-coverage:
+	@echo "📊 Running tests with coverage..."
+	go test -cover -v ./...
+
+# Run SCD tests with coverage
+test-scd-coverage:
+	@echo "📊 Running SCD tests with coverage..."
+	go test -cover -v ./internal/scd/
 
 # Start just the API server (assumes database is already running)
 api:
