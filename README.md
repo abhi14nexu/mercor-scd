@@ -66,6 +66,42 @@ curl http://localhost:8081/api/v1/jobs/job-1/versions
 - **Visual Dashboard** (`ui/dashboard.html`) - Web interface
 - **Database Admin** - Adminer on port 8082
 
+## Project Structure
+
+```
+mercor-scd/
+├── cmd/                          # Application entry points
+│   ├── api/                      # REST API server
+│   │   ├── main.go              # API server entry point
+│   │   └── handlers.go          # HTTP request handlers
+│   ├── demo/                     # CLI demonstration tools
+│   │   ├── main.go              # CLI entry point with cobra
+│   │   ├── jobs.go              # Job-related CLI commands
+│   │   └── seed.go              # Database seeding logic
+│   │  
+│   └── migrate/                  # Database migration runner
+│       └── main.go              # Migration execution
+├── internal/                     # Private application code
+│   ├── scd/                     # SCD library core
+│   │   ├── model.go             # Base SCD model and interface
+│   │   ├── update.go            # Version creation and updates
+│   │   ├── scopes.go            # Query scopes and filters
+│   │   └── *_test.go            # Comprehensive test suite
+│   └── models/                   # Domain models
+│       ├── job.go               # Job entity with SCD embedding
+│       ├── timelog.go           # Timelog entity
+│       └── payment_line_item.go # Payment entity
+├── migrations/                   # Database schema changes
+│   ├── 20250725103850_0001_init.up.sql    # Initial schema
+│   └── 20250725103850_0001_init.down.sql  # Rollback schema
+├── ui/                           # Frontend assets
+│   └── dashboard.html           # Visual data browser
+├── docker-compose.yml           # PostgreSQL and Adminer services
+├── Makefile                     # Development commands and automation
+├── go.mod                       # Go module dependencies
+├── go.sum                       # Dependency checksums
+```
+
 ### Key Features
 - ✅ **Type 2 SCD** - Complete audit trails with versioning
 - ✅ **Thread-Safe** - Concurrent update handling
